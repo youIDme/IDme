@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block title %}IDme — Page Not Found{% endblock %}
+
+{% block content %}
+<div class="max-w-md mx-auto px-4 py-20 text-center flex-grow flex flex-col justify-center">
+    <div class="rounded-2xl border border-white/10 bg-white/[0.02] p-8 backdrop-blur-xl shadow-2xl relative">
+        <div class="absolute inset-0 bg-gradient-to-tr from-blue-500/5 to-purple-500/5 pointer-events-none"></div>
+        
+        <div class="w-16 h-16 rounded-2xl bg-white/5 text-gray-400 flex items-center justify-center mx-auto mb-6">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+        </div>
+        
+        <h2 class="text-2xl font-bold text-white mb-2">Page Not Found</h2>
+        
+        {% if slug %}
+            <p class="text-sm text-gray-400 mb-6 leading-relaxed">
+                The handle <span class="font-mono text-white">idme.io/{{ slug }}</span> has not been claimed yet. You can reserve and verify it right now!
+            </p>
+            <div class="flex flex-col gap-3">
+                <a href="/create?slug={{ slug }}" class="w-full py-3.5 bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-500 hover:to-violet-500 text-white font-semibold rounded-xl shadow-lg transition-all duration-200">
+                    Claim @{{ slug }} Now
+                </a>
+                <a href="/" class="text-xs text-gray-500 hover:text-white transition-colors">
+                    Go back to home page
+                </a>
+            </div>
+        {% else %}
+            <p class="text-sm text-gray-400 mb-6 leading-relaxed">
+                The page you are looking for does not exist or has been moved.
+            </p>
+            <a href="/" class="inline-flex items-center justify-center px-6 py-3 bg-white/5 hover:bg-white/10 text-white border border-white/10 font-semibold rounded-xl transition-colors">
+                Return Home
+            </a>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

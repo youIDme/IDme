@@ -1,0 +1,230 @@
+{% extends "base.html" %}
+
+{% block title %}{{ user.display_name or user.slug }} — Verified IDme Profile{% endblock %}
+
+{% block content %}
+<!-- Avatar Resolution -->
+{% set avatar = None %}
+{% if verifications.github and verifications.github.metadata.avatar_url %}
+    {% set avatar = verifications.github.metadata.avatar_url %}
+{% elif verifications.linkedin and verifications.linkedin.metadata.picture %}
+    {% set avatar = verifications.linkedin.metadata.picture %}
+{% elif verifications.facebook and verifications.facebook.metadata.avatar_url %}
+    {% set avatar = verifications.facebook.metadata.avatar_url %}
+{% endif %}
+
+<div class="max-w-4xl mx-auto px-4 py-12 flex-grow w-full">
+    <!-- Main Glass Card -->
+    <div class="rounded-2xl border border-white/10 bg-white/[0.02] p-8 backdrop-blur-xl shadow-2xl overflow-hidden relative">
+        <div class="absolute inset-0 bg-gradient-to-tr from-blue-500/5 to-purple-500/5 pointer-events-none"></div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <!-- Left Side: Profile Summary & Trust Gauge -->
+            <div class="md:border-r md:border-white/5 md:pr-8 flex flex-col items-center md:items-start text-center md:text-left">
+                <!-- Avatar & Identity -->
+                <div class="relative mb-5 group">
+                    <div class="absolute -inset-0.5 rounded-full bg-gradient-to-tr from-blue-500 to-violet-500 blur opacity-40 group-hover:opacity-60 transition duration-300"></div>
+                    {% if avatar %}
+                        <img src="{{ avatar }}" alt="{{ user.display_name or user.slug }}" class="relative w-24 h-24 rounded-full object-cover border border-white/10">
+                    {% else %}
+                        <div class="relative w-24 h-24 rounded-full bg-gradient-to-br from-blue-600 to-violet-600 flex items-center justify-center text-white text-3xl font-extrabold border border-white/10">
+                            {{ (user.display_name or user.slug)[0] | uppercase }}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <h1 class="text-2xl font-bold text-white flex items-center justify-center md:justify-start gap-2 mb-1">
+                    {{ user.display_name or user.slug }}
+                    <svg class="w-6 h-6 text-emerald-500 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                        <polyline points="9 12 11 14 15 10"/>
+                    </svg>
+                </h1>
+                
+                <p class="text-sm font-mono text-gray-500 mb-4">@{{ user.slug }}</p>
+
+                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-emerald-500/20 bg-emerald-500/10 text-emerald-400 text-xs font-semibold mb-8">
+                    <span class="relative flex h-2 w-2">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                    </span>
+                    Verified Identity
+                </div>
+
+                <!-- Trust Score Radial Gauge -->
+                <div class="w-full flex flex-col items-center mb-6">
+                    <div class="relative w-40 h-40 flex items-center justify-center mb-4">
+                        <svg class="w-full h-full transform -rotate-90">
+                            <circle cx="80" cy="80" r="70" stroke="rgba(255,255,255,0.03)" stroke-width="8" fill="transparent" />
+                            <circle id="trust-gauge-circle" cx="80" cy="80" r="70" stroke="url(#score-grad)" stroke-width="8" fill="transparent" 
+                                    stroke-dasharray="440" stroke-dashoffset="440" stroke-linecap="round" 
+                                    data-score="{{ trust_score }}" class="transition-all duration-[1500ms] ease-out" />
+                            <defs>
+                                <linearGradient id="score-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                    <stop offset="0%" stop-color="#3b82f6" />
+                                    <stop offset="100%" stop-color="#8b5cf6" />
+                                </linearGradient>
+                            </defs>
+                        </svg>
+                        <div class="absolute flex flex-col items-center justify-center">
+                            <span class="text-4xl font-extrabold text-white">{{ trust_score }}</span>
+                            <span class="text-[10px] text-gray-500 uppercase font-semibold tracking-wider">Trust Score</span>
+                        </div>
+                    </div>
+                    
+                    {% if trust_score >= 80 %}
+                        <p class="text-sm font-bold text-emerald-400">Excellent Integrity</p>
+                    {% elif trust_score >= 60 %}
+                        <p class="text-sm font-bold text-blue-400">Strong Integrity</p>
+                    {% elif trust_score >= 40 %}
+                        <p class="text-sm font-bold text-amber-400">Moderate Integrity</p>
+                    {% else %}
+                        <p class="text-sm font-bold text-gray-400">Low Integrity</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Right Side: Verifications & Details -->
+            <div class="md:col-span-2 flex flex-col justify-between">
+                <div>
+                    <h3 class="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4 text-left">Verified Platforms</h3>
+                    
+                    <div class="space-y-4">
+                        <!-- GitHub Verified -->
+                        {% if verifications.github %}
+                        <div class="p-4 rounded-xl bg-white/[0.03] border border-white/5 flex items-start justify-between">
+                            <div class="flex items-start gap-3.5">
+                                <div class="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-gray-300 mt-0.5">
+                                    <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+                                </div>
+                                <div class="text-left">
+                                    <h4 class="text-sm font-bold text-white">GitHub</h4>
+                                    <p class="text-xs text-gray-400 mb-1">Username: @{{ verifications.github.username }}</p>
+                                    
+                                    <!-- Stats list -->
+                                    <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 mt-2 font-mono">
+                                        <span>{{ verifications.github.metadata.public_repos }} repositories</span>
+                                        <span class="w-1 h-1 rounded-full bg-gray-600"></span>
+                                        <span>{{ verifications.github.metadata.followers }} followers</span>
+                                        {% if verifications.github.metadata.created_at %}
+                                        <span class="w-1 h-1 rounded-full bg-gray-600"></span>
+                                        <span>Member since {{ verifications.github.metadata.created_at[:4] }}</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            {% if verifications.github.metadata.html_url %}
+                            <a href="{{ verifications.github.metadata.html_url }}" target="_blank" rel="noopener" class="text-gray-500 hover:text-white transition-colors">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                </svg>
+                            </a>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+
+                        <!-- LinkedIn Verified -->
+                        {% if verifications.linkedin %}
+                        <div class="p-4 rounded-xl bg-white/[0.03] border border-white/5 flex items-start justify-between">
+                            <div class="flex items-start gap-3.5">
+                                <div class="w-10 h-10 rounded-xl bg-blue-600/10 flex items-center justify-center text-blue-400 mt-0.5">
+                                    <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.779-1.75-1.75s.784-1.75 1.75-1.75 1.75.779 1.75 1.75-.784 1.75-1.75 1.75zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/></svg>
+                                </div>
+                                <div class="text-left">
+                                    <h4 class="text-sm font-bold text-white">LinkedIn</h4>
+                                    <p class="text-xs text-gray-400">Verified User: {{ verifications.linkedin.metadata.given_name }} {{ verifications.linkedin.metadata.family_name }}</p>
+                                    <div class="flex items-center gap-1.5 text-xs text-gray-500 mt-2 font-mono">
+                                        <span>Authenticated via OpenID Connect</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <!-- Facebook Verified -->
+                        {% if verifications.facebook %}
+                        <div class="p-4 rounded-xl bg-white/[0.03] border border-white/5 flex items-start justify-between">
+                            <div class="flex items-start gap-3.5">
+                                <div class="w-10 h-10 rounded-xl bg-blue-800/10 flex items-center justify-center text-blue-500 mt-0.5">
+                                    <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                                </div>
+                                <div class="text-left">
+                                    <h4 class="text-sm font-bold text-white">Facebook</h4>
+                                    <p class="text-xs text-gray-400">Verified Username: {{ verifications.facebook.username }}</p>
+                                    <div class="flex items-center gap-1.5 text-xs text-gray-500 mt-2 font-mono">
+                                        <span>Connected Profile</span>
+                                    </div>
+                                </div>
+                            </div>
+                            {% if verifications.facebook.metadata.profile_url %}
+                            <a href="{{ verifications.facebook.metadata.profile_url }}" target="_blank" rel="noopener" class="text-gray-500 hover:text-white transition-colors">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                </svg>
+                            </a>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+
+                        <!-- WhatsApp Verified -->
+                        {% if verifications.whatsapp %}
+                        <div class="p-4 rounded-xl bg-white/[0.03] border border-white/5 flex items-start justify-between">
+                            <div class="flex items-start gap-3.5">
+                                <div class="w-10 h-10 rounded-xl bg-emerald-600/10 flex items-center justify-center text-emerald-400 mt-0.5">
+                                    <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.717-1.454L0 24zm6.59-4.846c1.6.95 3.167 1.455 4.773 1.456 5.253 0 9.526-4.272 9.53-9.53.002-2.546-.99-4.94-2.793-6.746a9.467 9.467 0 00-6.737-2.793C6.166 1.54 1.897 5.812 1.893 11.07c-.001 1.714.453 3.39 1.317 4.887l-.995 3.635 3.732-.98.1 0z"/></svg>
+                                </div>
+                                <div class="text-left">
+                                    <h4 class="text-sm font-bold text-white">WhatsApp</h4>
+                                    <p class="text-xs text-gray-400">Phone Verification Hash: <span class="font-mono">{{ verifications.whatsapp.metadata.phone_hash }}</span></p>
+                                    <div class="flex items-center gap-1.5 text-xs text-gray-500 mt-2 font-mono">
+                                        <span>Verified Mobile Number Owner</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Interactions & Sharing -->
+                <div class="border-t border-white/5 pt-6 mt-8 space-y-6">
+                    <div class="flex flex-wrap gap-3">
+                        <button type="button" id="share-profile-btn" data-url="{{ profile_url }}" class="flex-grow sm:flex-grow-0 px-5 py-3 bg-white/5 hover:bg-white/10 text-white font-semibold text-sm rounded-xl border border-white/10 flex items-center justify-center gap-2 transition-colors">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M8.684 10.742l4.636-2.318m0 0a3 3 0 102.243-4.077 3 3 0 00-2.243 4.077zM9.038 9.038A9 9 0 0012 21a9.003 9.003 0 008.361-5.63M9.038 9.038L7.461 7.461" />
+                            </svg>
+                            Share Profile Link
+                        </button>
+                        
+                        <button type="button" id="qr-toggle-btn" class="px-5 py-3 bg-white/5 hover:bg-white/10 text-white font-semibold text-sm rounded-xl border border-white/10 flex items-center justify-center gap-2 transition-colors">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v1m6 11h2m-6 0h-2v4m0-16v4m0 4h.01M4 12h.01M4 8h.01M4 16h.01M8 8h.01M8 12h.01M8 16h.01M12 12h.01M12 16h.01M16 12h.01M16 16h.01M16 8h.01" />
+                            </svg>
+                            View QR Code
+                        </button>
+                    </div>
+
+                    <!-- QR Display (Collapsible) -->
+                    <div id="qr-container" class="hidden flex flex-col items-center justify-center bg-white/[0.01] border border-white/5 p-6 rounded-xl animate-fade-in">
+                        <img src="/{{ user.slug }}/qr" alt="QR Code" class="w-44 h-44 rounded-lg bg-white p-2">
+                        <p class="text-xs text-gray-500 mt-3 font-mono">Scan to view profile</p>
+                    </div>
+
+                    <!-- Embeddable Badge Code Snippet -->
+                    <div class="text-left">
+                        <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Embeddable Trust Badge</label>
+                        <div class="flex gap-2">
+                            <input type="text" id="badge-code" readonly value="&lt;script src=&quot;{{ profile_url }}/badge.js&quot;&gt;&lt;/script&gt;" class="flex-grow px-3 py-2 bg-white/5 border border-white/10 rounded-lg font-mono text-xs text-gray-400 focus:outline-none">
+                            <button type="button" id="copy-badge-btn" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-lg transition-colors">Copy</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="mt-8 pt-4 border-t border-white/5 text-center text-xs text-gray-600 font-mono">
+            First verified on {{ user.created_at.strftime('%Y-%m-%d') }}
+        </div>
+    </div>
+</div>
+{% endblock %}

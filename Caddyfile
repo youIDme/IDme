@@ -1,0 +1,55 @@
+# ─────────────────────────────────────────────
+# IDme — Caddy Reverse Proxy Configuration
+# ─────────────────────────────────────────────
+
+# For local development, use :80
+# For production, replace with your domain: idme.io
+:80 {
+	# Security headers
+	header {
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		X-XSS-Protection "1; mode=block"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		-Server
+	}
+
+	# Compression
+	encode gzip zstd
+
+	# Static files with aggressive caching
+	handle /static/* {
+		root * /srv
+		file_server
+		header Cache-Control "public, max-age=31536000, immutable"
+	}
+
+	# Favicon
+	handle /favicon.svg {
+		root * /srv/static/images
+		rewrite * /favicon.svg
+		file_server
+	}
+
+	# All other requests go to FastAPI
+	handle {
+		reverse_proxy app:8000 {
+			header_up X-Real-IP {remote_host}
+			header_up X-Forwarded-For {remote_host}
+			header_up X-Forwarded-Proto {scheme}
+			
+			# Health check for upstream
+			health_uri /health
+			health_interval 30s
+			health_timeout 5s
+		}
+	}
+
+	# Access logging
+	log {
+		output stdout
+		format json
+		level INFO
+	}
+}

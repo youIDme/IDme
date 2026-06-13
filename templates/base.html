@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}IDme — One verified link for all your work{% endblock %}</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', path='/images/favicon.svg') }}">
+    
+    <!-- SEO & Open Graph -->
+    {% if og_meta %}
+        <meta name="description" content="{{ og_meta['og:description'] }}">
+        <meta property="og:title" content="{{ og_meta['og:title'] }}">
+        <meta property="og:description" content="{{ og_meta['og:description'] }}">
+        <meta property="og:url" content="{{ og_meta['og:url'] }}">
+        <meta property="og:type" content="{{ og_meta['og:type'] }}">
+        <meta property="og:site_name" content="{{ og_meta['og:site_name'] }}">
+        <meta name="twitter:card" content="{{ og_meta['twitter:card'] }}">
+        <meta name="twitter:title" content="{{ og_meta['twitter:title'] }}">
+        <meta name="twitter:description" content="{{ og_meta['twitter:description'] }}">
+    {% else %}
+        <meta name="description" content="A signup-less web portal where anyone connects their platforms via OAuth and gets a verified identity page. One link, fully verified.">
+        <meta property="og:title" content="IDme — One verified link for all your work">
+        <meta property="og:description" content="A signup-less web portal where anyone connects their platforms via OAuth and gets a verified identity page. One link, fully verified.">
+        <meta property="og:type" content="website">
+    {% endif %}
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    
+    <!-- Global CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/style.css') }}">
+    {% block extra_css %}{% endblock %}
+</head>
+<body class="bg-[#030712] text-gray-100 font-sans antialiased h-full flex flex-col overflow-x-hidden selection:bg-blue-600 selection:text-white">
+    <!-- Ambient Background Gradients -->
+    <div class="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+        <div class="absolute -top-[40%] -left-[20%] w-[80%] h-[80%] rounded-full bg-blue-600/10 blur-[120px]"></div>
+        <div class="absolute -bottom-[40%] -right-[20%] w-[80%] h-[80%] rounded-full bg-purple-600/10 blur-[120px]"></div>
+        <div class="absolute top-[30%] right-[10%] w-[40%] h-[40%] rounded-full bg-emerald-600/5 blur-[100px]"></div>
+        <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_20%,#030712_80%)]"></div>
+        <div class="absolute inset-0 bg-grid-pattern opacity-[0.02]"></div>
+    </div>
+
+    <!-- Navigation -->
+    <header class="relative z-10 border-b border-white/5 bg-[#030712]/50 backdrop-blur-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <a href="/" class="flex items-center gap-2.5 group">
+                <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-violet-600 flex items-center justify-center shadow-lg shadow-blue-500/20 group-hover:scale-105 transition-transform duration-300">
+                    <svg class="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                        <polyline points="9 12 11 14 15 10"/>
+                    </svg>
+                </div>
+                <span class="font-extrabold text-xl tracking-tight bg-gradient-to-r from-white via-gray-200 to-gray-400 bg-clip-text text-transparent group-hover:opacity-90 transition-opacity">IDme</span>
+            </a>
+            <nav class="flex items-center gap-4">
+                {% block nav_actions %}
+                <a href="/create" class="relative inline-flex items-center justify-center p-0.5 mb-2 me-2 overflow-hidden text-sm font-medium text-gray-900 rounded-lg group bg-gradient-to-br from-purple-600 to-blue-500 group-hover:from-purple-600 group-hover:to-blue-500 hover:text-white dark:text-white focus:ring-4 focus:outline-none focus:ring-blue-800 transition-all duration-300">
+                    <span class="relative px-5 py-2 transition-all ease-in duration-75 bg-gray-900 rounded-md group-hover:bg-opacity-0">
+                        Create Your IDme
+                    </span>
+                </a>
+                {% endblock %}
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="relative z-10 flex-grow flex flex-col justify-center">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="relative z-10 border-t border-white/5 py-8 mt-12 bg-[#030712]/30">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div class="text-sm text-gray-500">
+                &copy; {{ datetime.now().year if datetime else 2026 }} IDme. One verified link for all your work.
+            </div>
+            <div class="flex gap-6 text-sm text-gray-400">
+                <a href="#" class="hover:text-white transition-colors">Privacy</a>
+                <a href="#" class="hover:text-white transition-colors">Terms</a>
+                <a href="/health" class="hover:text-white transition-colors">Status</a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2"></div>
+
+    <!-- Global App JavaScript -->
+    <script src="{{ url_for('static', path='/js/app.js') }}"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

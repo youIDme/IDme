@@ -1,0 +1,39 @@
+# IDme — Production Dependencies
+# Python 3.11+
+
+# Web framework
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+
+# Database
+sqlalchemy[asyncio]==2.0.36
+asyncpg==0.30.0
+alembic==1.14.1
+
+# Redis
+redis[hiredis]==5.2.1
+
+# HTTP client
+httpx==0.28.1
+
+# Templates
+jinja2==3.1.5
+
+# Configuration
+pydantic-settings==2.7.1
+pydantic[email]==2.10.4
+
+# Forms / multipart
+python-multipart==0.0.20
+
+# Security
+cryptography==44.0.0
+
+# QR code generation
+qrcode[pil]==8.0
+
+# Image processing (for QR)
+pillow==11.1.0
+
+# Rate limiting
+limits==4.0.1
