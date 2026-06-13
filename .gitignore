@@ -44,6 +44,9 @@ venv.bak/
 *.sln
 *.swp
 
-# OS
 .DS_Store
 Thumbs.db
+
+# Node / TypeScript / Wrangler
+node_modules/
+.wrangler/

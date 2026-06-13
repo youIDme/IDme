@@ -1,0 +1,22 @@
+{
+  "name": "idme",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-06-13",
+  "kv_namespaces": [
+    {
+      "binding": "IDME_KV",
+      "id": "26b06ea59bed45f4842a2f6e5570b0fb"
+    }
+  ],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "idme-db",
+      "database_id": "b6fa137e-2c54-4dd3-b275-011b0925a38c"
+    }
+  ],
+  "assets": {
+    "directory": "./static",
+    "binding": "ASSETS"
+  }
+}
