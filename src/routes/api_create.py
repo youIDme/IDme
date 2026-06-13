@@ -15,7 +15,7 @@ import logging
 import secrets
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File, Form
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -224,7 +224,30 @@ async def confirm_whatsapp_verification(
     code: str,
     db: AsyncSession = Depends(get_db),
 ):
-    """Confirm that user sent the WhatsApp verification message."""
+    """
+    Confirm that user sent the WhatsApp verification message.
+    If Twilio is configured, we strictly require the webhook to have completed it.
+    If not, we allow the fallback confirmation.
+    """
+    from src.redis_client import redis_client
+    slug = await redis_client.get(f"whatsapp_verified:{code}")
+
+    if slug:
+        await redis_client.delete(f"whatsapp_verified:{code}")
+        return {
+            "success": True,
+            "verified": True,
+            "profile_url": f"/{slug}",
+        }
+
+    # If Twilio credentials are set, we strictly require the webhook!
+    if settings.TWILIO_ACCOUNT_SID and settings.TWILIO_AUTH_TOKEN:
+        raise HTTPException(
+            status_code=400,
+            detail="Verification message not received yet. Please send the message on WhatsApp and try again.",
+        )
+
+    # Fallback (non-Twilio mode) - click-to-chat trust on first use
     verifier = WhatsAppVerifier()
     confirmation = await verifier.confirm_verification(code)
 
@@ -259,7 +282,7 @@ async def confirm_whatsapp_verification(
         verification.platform_username = phone
         verification.status = "verified"
         verification.verified_at = datetime.now(timezone.utc)
-        verification.metadata_json = {"phone_hash": phone_hash}
+        verification.metadata_json = {"phone_hash": phone_hash, "verified_via": "fallback"}
     else:
         verification = Verification(
             user_id=user.id,
@@ -268,7 +291,7 @@ async def confirm_whatsapp_verification(
             platform_username=phone,
             status="verified",
             verified_at=datetime.now(timezone.utc),
-            metadata_json={"phone_hash": phone_hash},
+            metadata_json={"phone_hash": phone_hash, "verified_via": "fallback"},
         )
         db.add(verification)
 
@@ -280,6 +303,94 @@ async def confirm_whatsapp_verification(
         "verified": True,
         "profile_url": f"/{user.slug}",
     }
+
+
+@router.post("/whatsapp/webhook")
+async def whatsapp_webhook(
+    From: str = Form(...),
+    Body: str = Form(...),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Twilio WhatsApp Webhook.
+    Called by Twilio when a user sends a message to our Twilio WhatsApp number.
+    """
+    import re
+    import json
+
+    logger.info(f"Received WhatsApp webhook from {From}: {Body}")
+
+    # Extract code: IDme-verify-xxxx
+    match = re.search(r"IDme-verify-([a-f0-9]+)", Body, re.IGNORECASE)
+    if not match:
+        logger.warning(f"No verification code found in message: {Body}")
+        return {"status": "ignored"}
+
+    code = match.group(1).lower()
+
+    # Fetch verification data from Redis
+    from src.redis_client import redis_client
+    key = f"whatsapp_verify:{code}"
+    data = await redis_client.get(key)
+    if not data:
+        logger.warning(f"Verification code {code} not found or expired in Redis")
+        return {"status": "expired"}
+
+    parsed = json.loads(data)
+    session_token = parsed["session_token"]
+
+    # Clean the sender's phone number
+    sender_phone = From.replace("whatsapp:", "").strip()
+
+    # Find user by session token
+    result = await db.execute(
+        select(User).where(User.session_token == session_token)
+    )
+    user = result.scalar_one_or_none()
+    if not user:
+        logger.error(f"User not found for session token in verification code {code}")
+        return {"status": "user_not_found"}
+
+    # Check/create verification
+    existing = await db.execute(
+        select(Verification).where(
+            Verification.user_id == user.id,
+            Verification.platform == "whatsapp",
+        )
+    )
+    verification = existing.scalar_one_or_none()
+
+    phone_hash = hashlib.sha256(sender_phone.encode()).hexdigest()[:16]
+
+    if verification:
+        verification.platform_user_id = sender_phone
+        verification.platform_username = sender_phone
+        verification.status = "verified"
+        verification.verified_at = datetime.now(timezone.utc)
+        verification.metadata_json = {"phone_hash": phone_hash, "verified_via": "webhook"}
+    else:
+        verification = Verification(
+            user_id=user.id,
+            platform="whatsapp",
+            platform_user_id=sender_phone,
+            platform_username=sender_phone,
+            status="verified",
+            verified_at=datetime.now(timezone.utc),
+            metadata_json={"phone_hash": phone_hash, "verified_via": "webhook"},
+        )
+        db.add(verification)
+
+    # Mark onboarding complete
+    user.onboarding_complete = True
+    await db.flush()
+
+    # Store in Redis that webhook verification succeeded and map it to user's slug
+    await redis_client.setex(f"whatsapp_verified:{code}", 600, user.slug)
+    # Clean up the pending verification key
+    await redis_client.delete(key)
+
+    logger.info(f"WhatsApp verification successful for user {user.slug} from phone {sender_phone}")
+    return {"status": "verified"}
 
 
 @router.post("/upload-headshot/{session_token}")

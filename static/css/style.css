@@ -342,9 +342,19 @@ input[type="tel"]:focus {
     box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
 }
 
+.bg-white\/\[0\.02\] {
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
 .bg-white\/\[0\.02\]:hover {
-    background-color: rgba(255, 255, 255, 0.035);
-    border-color: rgba(255, 255, 255, 0.12);
+    background-color: rgba(255, 255, 255, 0.045);
+    border-color: rgba(255, 255, 255, 0.15);
+    transform: translateY(-2px);
+    box-shadow: 0 12px 24px -10px rgba(59, 130, 246, 0.12);
+}
+
+.rounded-xl {
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* Toast styling */
