@@ -16,6 +16,7 @@ router = APIRouter(tags=["pages"])
 async def index(request: Request):
     """Landing page — 'One verified link for all your work'."""
     return request.app.state.templates.TemplateResponse(
+        request,
         "index.html",
         {"request": request},
     )
@@ -25,6 +26,7 @@ async def index(request: Request):
 async def create_page(request: Request):
     """Identity creation wizard — multi-step onboarding flow."""
     return request.app.state.templates.TemplateResponse(
+        request,
         "create.html",
         {"request": request},
     )

@@ -43,6 +43,104 @@ async def _record_visit(user_id, request: Request, db: AsyncSession):
         logger.warning(f"IDM-PROFILE-001 _record_visit: failed: {type(e).__name__}")
 
 
+@router.get("/demo", response_class=HTMLResponse)
+async def view_demo_profile(request: Request):
+    """Render a demo public profile page with mocked verification data."""
+    from datetime import datetime
+
+    class DummyUser:
+        slug = "demo-user"
+        display_name = "Jane Doe"
+        created_at = datetime.now()
+
+    user = DummyUser()
+
+    class DummyTrustBreakdown:
+        total_score = 92
+        platforms_verified = 3
+        github_verified = True
+        linkedin_verified = True
+        whatsapp_verified = True
+        facebook_verified = False
+
+    trust_breakdown = DummyTrustBreakdown()
+
+    verifications = {
+        "github": {
+            "status": "verified",
+            "username": "janedoe-dev",
+            "verified_at": datetime.now().isoformat(),
+            "metadata": {
+                "public_repos": 42,
+                "followers": 185,
+                "company": "Decentralized Corp",
+                "location": "Remote",
+                "bio": "Senior Backend & Infrastructure Engineer. Building open-source decentralized systems.",
+                "html_url": "https://github.com",
+            }
+        },
+        "linkedin": {
+            "status": "verified",
+            "username": "jane-doe",
+            "verified_at": datetime.now().isoformat(),
+            "metadata": {
+                "given_name": "Jane",
+                "family_name": "Doe",
+                "email": "jane.doe@example.com",
+                "locale": "en_US",
+            }
+        },
+        "whatsapp": {
+            "status": "verified",
+            "username": "+1234567890",
+            "verified_at": datetime.now().isoformat(),
+            "metadata": {
+                "phone_hash": "a8f3b2d9e0c1f2a3",
+            }
+        }
+    }
+
+    import json
+    json_ld = {
+        "@context": "https://schema.org",
+        "@type": "Person",
+        "name": "Jane Doe",
+        "alternateName": "demo-user",
+        "url": f"{request.app.state.public_url}/demo",
+        "sameAs": ["https://github.com"],
+        "description": "Senior Backend & Infrastructure Engineer. Building open-source decentralized systems."
+    }
+
+    og_meta = {
+        "og:title": "Jane Doe — Verified IDme Profile",
+        "og:description": "Verified IDme profile with a Trust Score of 92.",
+        "og:url": f"{request.app.state.public_url}/demo",
+        "og:type": "profile",
+        "og:site_name": "IDme",
+        "twitter:card": "summary_large_image",
+        "twitter:title": "Jane Doe — Verified IDme Profile",
+        "twitter:description": "Verified IDme profile with a Trust Score of 92."
+    }
+
+    custom_avatar = "/static/images/demo_headshot.png"
+
+    return request.app.state.templates.TemplateResponse(
+        request,
+        "profile.html",
+        {
+            "request": request,
+            "user": user,
+            "verifications": verifications,
+            "trust_score": 92,
+            "trust_breakdown": trust_breakdown,
+            "og_meta": og_meta,
+            "json_ld": json.dumps(json_ld),
+            "custom_avatar": custom_avatar,
+            "profile_url": f"{request.app.state.public_url}/demo",
+        },
+    )
+
+
 @router.get("/{slug}", response_class=HTMLResponse)
 async def view_profile(
     request: Request,
@@ -57,6 +155,7 @@ async def view_profile(
 
     if not user:
         return request.app.state.templates.TemplateResponse(
+            request,
             "not_found.html",
             {"request": request, "slug": slug},
             status_code=404,
@@ -64,6 +163,7 @@ async def view_profile(
 
     if not user.onboarding_complete:
         return request.app.state.templates.TemplateResponse(
+            request,
             "not_found.html",
             {"request": request, "slug": slug},
             status_code=404,
@@ -120,7 +220,17 @@ async def view_profile(
 
     json_ld_str = json.dumps(json_ld)
 
+    # Check if a custom uploaded headshot exists
+    import os
+    custom_avatar = None
+    for ext in ["png", "jpg", "jpeg", "webp", "gif"]:
+        path = f"static/uploads/{user.slug}.{ext}"
+        if os.path.exists(path):
+            custom_avatar = f"/static/uploads/{user.slug}.{ext}"
+            break
+
     return request.app.state.templates.TemplateResponse(
+        request,
         "profile.html",
         {
             "request": request,
@@ -130,6 +240,7 @@ async def view_profile(
             "trust_breakdown": trust,
             "og_meta": og_meta,
             "json_ld": json_ld_str,
+            "custom_avatar": custom_avatar,
             "profile_url": f"{request.app.state.public_url}/{user.slug}",
         },
     )

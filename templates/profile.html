@@ -20,7 +20,9 @@
 {% block content %}
 <!-- Avatar Resolution -->
 {% set avatar = None %}
-{% if verifications.github and verifications.github.metadata.avatar_url %}
+{% if custom_avatar %}
+    {% set avatar = custom_avatar %}
+{% elif verifications.github and verifications.github.metadata.avatar_url %}
     {% set avatar = verifications.github.metadata.avatar_url %}
 {% elif verifications.linkedin and verifications.linkedin.metadata.picture %}
     {% set avatar = verifications.linkedin.metadata.picture %}

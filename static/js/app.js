@@ -433,6 +433,67 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // ── Headshot Upload Logic ────────────────────────────────
+    const hsUploadBtn = document.getElementById('headshot-upload-btn');
+    const hsInput = document.getElementById('headshot-input');
+    const hsPreviewContainer = document.getElementById('headshot-preview-container');
+    const hsPreview = document.getElementById('headshot-preview');
+    const hsStatus = document.getElementById('headshot-status');
+
+    if (hsUploadBtn && hsInput) {
+        hsUploadBtn.addEventListener('click', () => {
+            hsInput.click();
+        });
+
+        hsInput.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            if (!file.type.startsWith('image/')) {
+                showToast('Please select a valid image file.', 'error');
+                return;
+            }
+
+            if (!currentSessionToken) {
+                showToast('Please reserve a username first.', 'error');
+                return;
+            }
+
+            hsUploadBtn.disabled = true;
+            hsStatus.innerText = 'Uploading...';
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const response = await fetch(`/api/upload-headshot/${currentSessionToken}`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    if (hsPreview) {
+                        hsPreview.src = data.avatar_url;
+                    }
+                    if (hsPreviewContainer) {
+                        hsPreviewContainer.classList.remove('hidden');
+                    }
+                    hsStatus.innerText = 'Uploaded successfully!';
+                    showToast('Professional headshot uploaded successfully!');
+                } else {
+                    hsStatus.innerText = 'Upload failed';
+                    showToast(data.detail || 'Upload failed', 'error');
+                }
+            } catch (err) {
+                hsStatus.innerText = 'Upload failed';
+                showToast('Could not upload image', 'error');
+            } finally {
+                hsUploadBtn.disabled = false;
+            }
+        });
+    }
+
     // ── 3. WhatsApp Modal Controls ──────────────────────────
     const waOpenBtn = document.getElementById('connect-btn-whatsapp');
     const waModal = document.getElementById('whatsapp-modal');

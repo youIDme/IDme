@@ -46,9 +46,12 @@ async def lifespan(app: FastAPI):
     logger.info(f"Public URL: {settings.PUBLIC_URL}")
 
     # Create database tables (idempotent)
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    logger.info("Database tables verified")
+    try:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        logger.info("Database tables verified")
+    except Exception as db_err:
+        logger.error(f"Failed to initialize database tables: {type(db_err).__name__}: {db_err}. Proceeding without active DB connection (Offline/Demo Mode).")
 
     # Start background tasks (slug cleanup, etc.)
     await start_background_tasks()

@@ -15,7 +15,7 @@ import logging
 import secrets
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -279,4 +279,44 @@ async def confirm_whatsapp_verification(
         "success": True,
         "verified": True,
         "profile_url": f"/{user.slug}",
+    }
+
+
+@router.post("/upload-headshot/{session_token}")
+async def upload_headshot(
+    session_token: str,
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+):
+    """Upload a custom professional headshot image for the profile."""
+    result = await db.execute(
+        select(User).where(User.session_token == session_token)
+    )
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    import os
+    os.makedirs("static/uploads", exist_ok=True)
+
+    filename = file.filename or "headshot.png"
+    ext = filename.split(".")[-1].lower()
+    if ext not in ["png", "jpg", "jpeg", "webp", "gif"]:
+        raise HTTPException(status_code=400, detail="Invalid image file format")
+
+    # Clean up previous uploads with different extensions to avoid duplicates
+    for existing_ext in ["png", "jpg", "jpeg", "webp", "gif"]:
+        try:
+            os.remove(f"static/uploads/{user.slug}.{existing_ext}")
+        except FileNotFoundError:
+            pass
+
+    file_path = f"static/uploads/{user.slug}.{ext}"
+    with open(file_path, "wb") as f:
+        content = await file.read()
+        f.write(content)
+
+    return {
+        "success": True,
+        "avatar_url": f"/static/uploads/{user.slug}.{ext}",
     }
