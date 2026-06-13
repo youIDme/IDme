@@ -72,6 +72,7 @@ class VerificationResponse(BaseModel):
     status: str
     username: Optional[str] = None
     verified_at: Optional[datetime] = None
+    metadata: Optional[Dict[str, Any]] = None
 
 
 class IDmeProfileResponse(BaseModel):
@@ -83,6 +84,7 @@ class IDmeProfileResponse(BaseModel):
     verifications: Dict[str, VerificationResponse]
     created_at: datetime
     profile_url: str
+    ai_summary: Optional[str] = None
 
 
 class SessionStatusResponse(BaseModel):

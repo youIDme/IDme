@@ -2,6 +2,21 @@
 
 {% block title %}{{ user.display_name or user.slug }} — Verified IDme Profile{% endblock %}
 
+{% block extra_css %}
+<!-- AI Agent Discovery Meta -->
+<meta name="ai-agent-accessible" content="true">
+<meta name="ai-agent-optimized" content="true">
+<link rel="alternate" type="application/json" href="{{ profile_url }}/json">
+<link rel="alternate" type="application/json+ai" href="{{ profile_url }}/ai">
+
+<!-- JSON-LD Structured Data for Crawlers & LLM Agents -->
+{% if json_ld %}
+<script type="application/ld+json">
+{{ json_ld | safe }}
+</script>
+{% endif %}
+{% endblock %}
+
 {% block content %}
 <!-- Avatar Resolution -->
 {% set avatar = None %}

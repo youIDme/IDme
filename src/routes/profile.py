@@ -94,6 +94,32 @@ async def view_profile(
         platforms_count=trust.platforms_verified,
     )
 
+    # Build JSON-LD structured data for search crawlers & AI agents
+    import json
+    same_as = []
+    if "github" in verifications and verifications["github"]["metadata"].get("html_url"):
+        same_as.append(verifications["github"]["metadata"]["html_url"])
+    if "facebook" in verifications and verifications["facebook"]["metadata"].get("profile_url"):
+        same_as.append(verifications["facebook"]["metadata"]["profile_url"])
+
+    json_ld = {
+        "@context": "https://schema.org",
+        "@type": "Person",
+        "name": user.display_name or user.slug,
+        "alternateName": user.slug,
+        "url": f"{request.app.state.public_url}/{user.slug}",
+    }
+    if same_as:
+        json_ld["sameAs"] = same_as
+
+    bio = ""
+    if "github" in verifications and verifications["github"]["metadata"].get("bio"):
+        bio = verifications["github"]["metadata"]["bio"]
+    if bio:
+        json_ld["description"] = bio
+
+    json_ld_str = json.dumps(json_ld)
+
     return request.app.state.templates.TemplateResponse(
         "profile.html",
         {
@@ -103,9 +129,53 @@ async def view_profile(
             "trust_score": trust.total_score,
             "trust_breakdown": trust,
             "og_meta": og_meta,
+            "json_ld": json_ld_str,
             "profile_url": f"{request.app.state.public_url}/{user.slug}",
         },
     )
+
+
+def _generate_ai_summary(user, trust, verifications: dict) -> str:
+    """Compile a synthesized, LLM-optimized profile summary for CVs/portfolios."""
+    summary_parts = [
+        f"IDme Profile Summary for {user.display_name or user.slug} (@{user.slug})",
+        f"Overall Identity Trust Score: {trust.total_score}/100",
+        f"Account Created: {user.created_at.strftime('%Y-%m-%d') if user.created_at else 'N/A'}",
+        "\nVerified Platforms & Intelligence Gathered:"
+    ]
+
+    for platform, data in verifications.items():
+        meta = data.get("metadata", {})
+        username = data.get("username")
+        verified_at = data.get("verified_at")
+
+        part = f"- {platform.upper()}: username='{username}' (Verified: {verified_at})"
+        if platform == "github":
+            part += f"\n  * Repositories: {meta.get('public_repos', 0)}"
+            part += f"\n  * Followers: {meta.get('followers', 0)}"
+            if meta.get("company"):
+                part += f"\n  * Company: {meta.get('company')}"
+            if meta.get("location"):
+                part += f"\n  * Location: {meta.get('location')}"
+            if meta.get("bio"):
+                part += f"\n  * Bio: {meta.get('bio')}"
+        elif platform == "linkedin":
+            name = f"{meta.get('given_name', '')} {meta.get('family_name', '')}".strip()
+            if name:
+                part += f"\n  * Verified Name: {name}"
+            if meta.get("email"):
+                part += f"\n  * Email: {meta.get('email')}"
+            if meta.get("locale"):
+                part += f"\n  * Locale: {meta.get('locale')}"
+        elif platform == "facebook":
+            if meta.get("profile_url"):
+                part += f"\n  * Profile: {meta.get('profile_url')}"
+        elif platform == "whatsapp":
+            part += "\n  * Phone number verified owner"
+
+        summary_parts.append(part)
+
+    return "\n".join(summary_parts)
 
 
 @router.get("/{slug}/json")
@@ -125,6 +195,7 @@ async def view_profile_json(
     trust = compute_trust_score(user.verifications)
 
     verifications = {}
+    verifications_meta_dict = {}
     for v in user.verifications:
         if v.status == "verified":
             verifications[v.platform] = VerificationResponse(
@@ -132,7 +203,15 @@ async def view_profile_json(
                 status=v.status,
                 username=v.platform_username,
                 verified_at=v.verified_at,
+                metadata=v.metadata_json or {},
             )
+            verifications_meta_dict[v.platform] = {
+                "username": v.platform_username,
+                "verified_at": v.verified_at.isoformat() if v.verified_at else None,
+                "metadata": v.metadata_json or {},
+            }
+
+    ai_summary = _generate_ai_summary(user, trust, verifications_meta_dict)
 
     return IDmeProfileResponse(
         slug=user.slug,
@@ -141,7 +220,61 @@ async def view_profile_json(
         verifications=verifications,
         created_at=user.created_at,
         profile_url=f"https://idme.io/{user.slug}",
+        ai_summary=ai_summary,
     )
+
+
+@router.get("/{slug}/ai")
+async def view_profile_ai(
+    slug: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Dedicated AI-agent endpoint. Returns consolidated multiaccess intelligence
+    tailored specifically for LLMs to generate a CV, portfolio, or profile summary.
+    """
+    slug = slug.lower()
+
+    result = await db.execute(select(User).where(User.slug == slug))
+    user = result.scalar_one_or_none()
+
+    if not user or not user.onboarding_complete:
+        raise HTTPException(status_code=404, detail="Profile not found")
+
+    trust = compute_trust_score(user.verifications)
+
+    # Gather clean verified details
+    verifications_meta = {}
+    for v in user.verifications:
+        if v.status == "verified":
+            verifications_meta[v.platform] = {
+                "username": v.platform_username,
+                "verified_at": v.verified_at.isoformat() if v.verified_at else None,
+                "metadata": v.metadata_json or {},
+            }
+
+    ai_summary = _generate_ai_summary(user, trust, verifications_meta)
+
+    llm_prompt_context = (
+        f"You are an expert career advisor and resume writer. Below is the verified identity, "
+        f"social proof, and activity data gathered via IDme for {user.display_name or user.slug}.\n\n"
+        f"--- START VERIFIED IDENTITY PROFILE ---\n"
+        f"{ai_summary}\n"
+        f"--- END VERIFIED IDENTITY PROFILE ---\n\n"
+        f"Tasks for the AI Agent:\n"
+        f"1. Generate a tailored and optimized professional CV / Resume for this user based on their verified platform presence.\n"
+        f"2. Suggest portfolio layout, projects to highlight (using public repo metrics), and professional summary hooks.\n"
+        f"3. Do not invent details not present in the verified metadata; highlight only factual, cross-verified achievements."
+    )
+
+    return {
+        "slug": user.slug,
+        "display_name": user.display_name,
+        "trust_score": trust.total_score,
+        "raw_verifications": verifications_meta,
+        "ai_summary": ai_summary,
+        "llm_prompt_context": llm_prompt_context,
+    }
 
 
 @router.get("/{slug}/badge.js")
